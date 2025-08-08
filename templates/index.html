@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - ai chat{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-4">
+            <h1 class="display-4 fw-bold text-primary">
+                <i class="fas fa-magic me-3"></i>
+                AI Data Chat - Admin Interface
+            </h1>
+            <p class="lead text-muted">
+                Intelligent SQL procedure generation with universal rules for ANY data and query type
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Query Input Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    Query Analysis & Execution
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="queryForm">
+                    <div class="mb-3">
+                        <label for="userQuery" class="form-label fw-bold">Enter your query:</label>
+                        <textarea 
+                            class="form-control" 
+                            id="userQuery" 
+                            rows="4" 
+                            placeholder="e.g., Find the top 3 best performing employees for hiring decisions with statistical analysis"
+                            required
+                        ></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Try queries like: "Analyze sales trends Give me the list", "Find best candidates", "Statistical analysis of performance"
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary" id="executeBtn">
+                            <i class="fas fa-play me-2"></i>
+                            Process Query
+                            <span class="loading-spinner spinner-border spinner-border-sm ms-2" role="status"></span>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="clearBtn">
+                            <i class="fas fa-eraser me-2"></i>
+                            Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis section removed for simplicity -->
+
+<!-- Execution Results Section -->
+<div class="row mb-4" id="resultsSection" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>
+                    Execution Results
+                </h5>
+                <div>
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="executionStatus">Processing...</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="executionResults">
+                    <!-- Results will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent History Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Executions
+                </h5>
+                <a href="/history" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-external-link-alt me-1"></i>
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="recentHistory">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        Loading recent history...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Example Queries Modal -->
+<div class="modal fade" id="examplesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Example Queries
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Hiring & Performance</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <button class="btn btn-outline-primary btn-sm example-query" 
+                                        data-query="Find the top 3 best performing employees for hiring decisions">
+                                    Top performing employees
+                                </button>
+                            </li>
+                            <li class="mb-2">
+                                <button class="btn btn-outline-primary btn-sm example-query" 
+                                        data-query="Analyze employee performance by department with statistical measures">
+                                    Department performance analysis
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">Sales & Revenue</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <button class="btn btn-outline-success btn-sm example-query" 
+                                        data-query="Generate comprehensive sales report with customer rankings">
+                                    Sales performance report
+                                </button>
+                            </li>
+                            <li class="mb-2">
+                                <button class="btn btn-outline-success btn-sm example-query" 
+                                        data-query="Analyze revenue trends with growth rate calculations">
+                                    Revenue trend analysis
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button for Examples -->
+<div class="position-fixed bottom-0 end-0 p-3">
+    <button class="btn btn-primary rounded-circle" data-bs-toggle="modal" data-bs-target="#examplesModal" 
+            style="width: 60px; height: 60px;">
+        <i class="fas fa-question fa-lg"></i>
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentExecutionId = null;
+let statusCheckInterval = null;
+
+// DOM elements
+const queryForm = document.getElementById('queryForm');
+const userQueryInput = document.getElementById('userQuery');
+const executeBtn = document.getElementById('executeBtn');
+const clearBtn = document.getElementById('clearBtn');
+const resultsSection = document.getElementById('resultsSection');
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadRecentHistory();
+    
+    // Example query buttons
+    document.querySelectorAll('.example-query').forEach(btn => {
+        btn.addEventListener('click', function() {
+            userQueryInput.value = this.dataset.query;
+            bootstrap.Modal.getInstance(document.getElementById('examplesModal')).hide();
+        });
+    });
+});
+
+// Clear form
+clearBtn.addEventListener('click', function() {
+    userQueryInput.value = '';
+    resultsSection.style.display = 'none';
+});
+
+// Execute query
+queryForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const query = userQueryInput.value.trim();
+    if (!query) {
+        alert('Please enter a query first');
+        return;
+    }
+    
+    try {
+        showLoading(executeBtn);
+        const response = await fetch('/api/execute_query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            currentExecutionId = data.execution_id;
+            showExecutionStatus('processing');
+            startStatusChecking();
+        } else {
+            showError('Execution failed: ' + data.error);
+        }
+    } catch (error) {
+        showError('Execution failed: ' + error.message);
+    } finally {
+        hideLoading(executeBtn);
+    }
+});
+
+function displayAnalysisResults(data) {
+    document.getElementById('queryType').textContent = data.query_type.toUpperCase();
+    
+    const formulasContainer = document.getElementById('optimalFormulas');
+    formulasContainer.innerHTML = '';
+    data.optimal_formulas.forEach(formula => {
+        const span = document.createElement('span');
+        span.className = 'formula-tag';
+        span.textContent = formula;
+        formulasContainer.appendChild(span);
+    });
+    
+    const suggestionsContainer = document.getElementById('performanceSuggestions');
+    suggestionsContainer.innerHTML = '';
+    data.performance_suggestions.forEach(suggestion => {
+        const div = document.createElement('div');
+        div.className = 'mb-2';
+        div.innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>${suggestion}`;
+        suggestionsContainer.appendChild(div);
+    });
+    
+    analysisSection.style.display = 'block';
+}
+
+function showExecutionStatus(status) {
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('executionStatus');
+    
+    statusIndicator.className = `status-indicator status-${status}`;
+    
+    switch(status) {
+        case 'processing':
+            statusText.textContent = 'Processing...';
+            break;
+        case 'completed':
+            statusText.textContent = 'Completed';
+            break;
+        case 'error':
+            statusText.textContent = 'Error';
+            break;
+    }
+    
+    resultsSection.style.display = 'block';
+}
+
+function startStatusChecking() {
+    if (statusCheckInterval) clearInterval(statusCheckInterval);
+    
+    statusCheckInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/execution_status/${currentExecutionId}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                showExecutionStatus(data.status);
+                
+                if (data.status === 'completed' || data.status === 'error') {
+                    clearInterval(statusCheckInterval);
+                    displayExecutionResults(data);
+                    loadRecentHistory(); // Refresh history
+                }
+            }
+        } catch (error) {
+            console.error('Status check failed:', error);
+        }
+    }, 2000);
+}
+
+function displayExecutionResults(data) {
+    const resultsContainer = document.getElementById('executionResults');
+
+    if (data.status === 'error') {
+        resultsContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle"></i> Execution Error</h6>
+                <div class="error-message">
+                    ${Array.isArray(data.execution_results) ?
+                        data.execution_results.join('<br>') :
+                        data.execution_results || 'Unknown error occurred'}
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-chart-line text-primary"></i> Query Results</h6>
+                <span class="badge ${getScoreClass(data.quality_score)} fs-6">
+                    Quality: ${data.quality_score}/100
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="results-section mb-3">
+                    <h6 class="text-muted mb-3"><i class="fas fa-list"></i> Results:</h6>
+                    <div class="results-list">
+                        ${Array.isArray(data.execution_results) ?
+                            data.execution_results.map((result, index) =>
+                                `<div class="result-item d-flex align-items-start mb-2 p-3 bg-light rounded">
+                                    <span class="badge bg-primary me-3 mt-1">${index + 1}</span>
+                                    <div class="flex-grow-1">${escapeHtml(result)}</div>
+                                </div>`
+                            ).join('') :
+                            `<div class="result-item p-3 bg-light rounded">${escapeHtml(data.execution_results || 'No results available')}</div>`
+                        }
+                    </div>
+                </div>
+
+                ${data.procedure_code && data.procedure_code !== 'No procedure generated' && data.procedure_code !== 'Procedure generation failed' ?
+                    `<div class="procedure-section">
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#procedureCodeCollapse">
+                            <i class="fas fa-code"></i> View Generated SQL Procedure
+                        </button>
+                        <div class="collapse mt-3" id="procedureCodeCollapse">
+                            <div class="code-block">
+                                <pre class="bg-dark text-light p-3 rounded"><code class="language-sql">${escapeHtml(data.procedure_code)}</code></pre>
+                            </div>
+                        </div>
+                    </div>` : ''
+                }
+            </div>
+        </div>
+    `;
+
+    resultsContainer.innerHTML = html;
+
+    // Re-highlight code
+    if (window.Prism) {
+        Prism.highlightAll();
+    }
+}
+
+async function loadRecentHistory() {
+    try {
+        const response = await fetch('/api/history?limit=5');
+        const history = await response.json();
+        
+        const container = document.getElementById('recentHistory');
+        
+        if (history.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center">No recent executions</div>';
+            return;
+        }
+        
+        container.innerHTML = history.map(item => `
+            <div class="history-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>${escapeHtml(item.user_query.substring(0, 80))}${item.user_query.length > 80 ? '...' : ''}</strong>
+                        <div class="text-muted small">
+                            <i class="fas fa-clock me-1"></i>
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-${item.status === 'completed' ? 'success' : item.status === 'error' ? 'danger' : 'warning'}">
+                            ${item.status}
+                        </span>
+                        ${item.quality_score ? `<div class="quality-score small ${getScoreClass(item.quality_score)}">${item.quality_score}/100</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        document.getElementById('recentHistory').innerHTML = 
+            '<div class="text-danger">Failed to load history</div>';
+    }
+}
+
+// Utility functions
+function showLoading(button) {
+    button.disabled = true;
+    button.querySelector('.loading-spinner').classList.add('show');
+}
+
+function hideLoading(button) {
+    button.disabled = false;
+    button.querySelector('.loading-spinner').classList.remove('show');
+}
+
+function showError(message) {
+    // You can implement a toast notification here
+    alert(message);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getScoreClass(score) {
+    if (score >= 80) return 'score-excellent';
+    if (score >= 60) return 'score-good';
+    return 'score-poor';
+}
+</script>
+{% endblock %}

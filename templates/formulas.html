@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}Mathematical Formulas - SQL Procedure Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-5 fw-bold text-primary">
+                <i class="fas fa-calculator me-3"></i>
+                Mathematical Formulas Reference
+            </h1>
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Back to chat
+            </a>
+        </div>
+        <p class="lead text-muted mb-4">
+            Comprehensive collection of mathematical formulas and functions available for SQL procedure generation.
+        </p>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="searchFormulas" class="form-label">Search Formulas:</label>
+                            <input type="text" class="form-control" id="searchFormulas" 
+                                   placeholder="Search by formula name or description...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="categoryFilter" class="form-label">Filter by Category:</label>
+                            <select class="form-select" id="categoryFilter">
+                                <option value="">All Categories</option>
+                                {% for category in formulas.keys() %}
+                                <option value="{{ category }}">{{ category.title().replace('_', ' ') }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Formula Categories -->
+<div class="row">
+    {% for category, formulas_dict in formulas.items() %}
+    <div class="col-12 mb-4 formula-category" data-category="{{ category }}">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-{% if category == 'statistical' %}chart-bar{% elif category == 'aggregation' %}calculator{% elif category == 'business' %}briefcase{% elif category == 'performance_ranking' %}trophy{% elif category == 'interview_ranking' %}users{% elif category == 'hiring_metrics' %}user-tie{% elif category == 'financial' %}dollar-sign{% elif category == 'time_series' %}clock{% elif category == 'data_quality' %}check-circle{% else %}cog{% endif %} me-2"></i>
+                    {{ category.title().replace('_', ' ') }} Formulas
+                    <span class="badge bg-light text-dark ms-2">{{ formulas_dict|length }}</span>
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for formula_name, formula_code in formulas_dict.items() %}
+                    <div class="col-md-6 col-lg-4 mb-3 formula-item" data-formula-name="{{ formula_name }}" data-formula-code="{{ formula_code }}">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary">
+                                    {{ formula_name.replace('_', ' ').title() }}
+                                </h6>
+                                <div class="code-snippet mb-2">
+                                    <code class="text-dark">{{ formula_code }}</code>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary btn-sm copy-formula" 
+                                            data-formula="{{ formula_code }}"
+                                            title="Copy formula">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm show-example" 
+                                            data-formula-name="{{ formula_name }}"
+                                            data-formula-code="{{ formula_code }}"
+                                            title="Show example">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- No Results Message -->
+<div id="noResults" class="text-center text-muted" style="display: none;">
+    <i class="fas fa-search fa-3x mb-3"></i>
+    <h5>No formulas found</h5>
+    <p>Try adjusting your search criteria.</p>
+</div>
+
+<!-- Formula Example Modal -->
+<div class="modal fade" id="formulaExampleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-code me-2"></i>
+                    Formula Example
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="formulaExampleContent">
+                <!-- Example content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="copyExampleBtn">
+                    <i class="fas fa-copy me-2"></i>
+                    Copy Example
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Usage Guide -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Usage Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">How to Use Formulas</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Formulas are automatically suggested based on your query type
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Use placeholders like {column} and {table} in your queries
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Combine multiple formulas for complex analysis
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Formula Categories</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-chart-bar text-primary me-2"></i>
+                                <strong>Statistical:</strong> Mean, median, standard deviation, outliers
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-briefcase text-success me-2"></i>
+                                <strong>Business:</strong> Growth rates, rankings, performance metrics
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-users text-warning me-2"></i>
+                                <strong>HR:</strong> Employee performance, hiring metrics
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-dollar-sign text-info me-2"></i>
+                                <strong>Financial:</strong> ROI, profit margins, financial ratios
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// DOM elements
+const searchFormulas = document.getElementById('searchFormulas');
+const categoryFilter = document.getElementById('categoryFilter');
+const noResults = document.getElementById('noResults');
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Event listeners
+    searchFormulas.addEventListener('input', debounce(filterFormulas, 300));
+    categoryFilter.addEventListener('change', filterFormulas);
+    
+    // Copy formula buttons
+    document.querySelectorAll('.copy-formula').forEach(btn => {
+        btn.addEventListener('click', function() {
+            copyToClipboard(this.dataset.formula);
+            showToast('Formula copied to clipboard!', 'success');
+        });
+    });
+    
+    // Show example buttons
+    document.querySelectorAll('.show-example').forEach(btn => {
+        btn.addEventListener('click', function() {
+            showFormulaExample(this.dataset.formulaName, this.dataset.formulaCode);
+        });
+    });
+});
+
+function filterFormulas() {
+    const searchTerm = searchFormulas.value.toLowerCase();
+    const selectedCategory = categoryFilter.value;
+    
+    let visibleCount = 0;
+    
+    // Filter categories
+    document.querySelectorAll('.formula-category').forEach(category => {
+        const categoryName = category.dataset.category;
+        const shouldShowCategory = !selectedCategory || categoryName === selectedCategory;
+        
+        if (!shouldShowCategory) {
+            category.style.display = 'none';
+            return;
+        }
+        
+        // Filter formulas within category
+        let categoryHasVisible = false;
+        category.querySelectorAll('.formula-item').forEach(item => {
+            const formulaName = item.dataset.formulaName.toLowerCase();
+            const formulaCode = item.dataset.formulaCode.toLowerCase();
+            const matchesSearch = !searchTerm || 
+                formulaName.includes(searchTerm) || 
+                formulaCode.includes(searchTerm);
+            
+            if (matchesSearch) {
+                item.style.display = 'block';
+                categoryHasVisible = true;
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        category.style.display = categoryHasVisible ? 'block' : 'none';
+    });
+    
+    // Show/hide no results message
+    noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+}
+
+function showFormulaExample(formulaName, formulaCode) {
+    const examples = getFormulaExamples(formulaName, formulaCode);
+    
+    const content = document.getElementById('formulaExampleContent');
+    content.innerHTML = `
+        <div class="mb-3">
+            <h6 class="text-primary">${formulaName.replace('_', ' ').title()}</h6>
+            <p class="text-muted">${examples.description}</p>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Formula:</h6>
+            <div class="code-block">
+                <pre><code class="language-sql">${formulaCode}</code></pre>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Example Usage:</h6>
+            <div class="code-block">
+                <pre><code class="language-sql">${examples.usage}</code></pre>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <h6>Use Cases:</h6>
+            <ul>
+                ${examples.useCases.map(useCase => `<li>${useCase}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+    
+    // Store current example for copying
+    document.getElementById('copyExampleBtn').dataset.example = examples.usage;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('formulaExampleModal'));
+    modal.show();
+    
+    // Re-highlight code
+    if (window.Prism) {
+        Prism.highlightAll();
+    }
+}
+
+function getFormulaExamples(formulaName, formulaCode) {
+    const examples = {
+        'employee_performance_rank': {
+            description: 'Ranks employees by their performance rating in descending order.',
+            usage: 'SELECT employee_name, performance_rating,\n       RANK() OVER (ORDER BY performance_rating DESC) as performance_rank\nFROM employees\nORDER BY performance_rank;',
+            useCases: [
+                'Identifying top performers for promotions',
+                'Performance review rankings',
+                'Merit-based compensation decisions'
+            ]
+        },
+        'moving_average': {
+            description: 'Calculates a moving average over a specified window of rows.',
+            usage: 'SELECT order_date, sales_amount,\n       AVG(sales_amount) OVER (\n           ORDER BY order_date \n           ROWS BETWEEN 6 PRECEDING AND CURRENT ROW\n       ) as moving_avg_7_days\nFROM sales\nORDER BY order_date;',
+            useCases: [
+                'Smoothing out fluctuations in time series data',
+                'Trend analysis in sales or performance metrics',
+                'Identifying patterns in seasonal data'
+            ]
+        },
+        'z_score': {
+            description: 'Calculates the z-score to identify outliers in the data.',
+            usage: 'SELECT employee_name, salary,\n       (salary - AVG(salary) OVER()) / STDDEV(salary) OVER() as z_score\nFROM employees\nHAVING ABS(z_score) > 2;',
+            useCases: [
+                'Detecting outliers in salary data',
+                'Identifying unusual performance metrics',
+                'Quality control in manufacturing data'
+            ]
+        }
+    };
+    
+    return examples[formulaName] || {
+        description: 'A mathematical formula for data analysis.',
+        usage: formulaCode.replace(/{column}/g, 'your_column').replace(/{table}/g, 'your_table'),
+        useCases: [
+            'Data analysis and reporting',
+            'Business intelligence calculations',
+            'Statistical analysis'
+        ]
+    };
+}
+
+// Copy example button
+document.getElementById('copyExampleBtn').addEventListener('click', function() {
+    const example = this.dataset.example;
+    if (example) {
+        copyToClipboard(example);
+        showToast('Example copied to clipboard!', 'success');
+    }
+});
+
+// Utility functions
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).catch(err => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    });
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function showToast(message, type) {
+    // Simple alert for now - you can implement a proper toast notification
+    alert(message);
+}
+</script>
+{% endblock %}

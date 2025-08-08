@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SQL Procedure Manager{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+
+    <style>
+        /* Override any conflicting styles for black and white theme */
+        body {
+            background: #ffffff !important;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: #000000 !important;
+            border-bottom: 2px solid #000000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #ffffff !important;
+        }
+
+        .main-container {
+            background: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 4px;
+            margin: 20px auto;
+            padding: 30px;
+        }
+
+        .card {
+            border: 2px solid #000000;
+            border-radius: 4px;
+            background: #ffffff;
+        }
+
+        .card:hover {
+            background: #f0f0f0;
+        }
+
+        .btn-primary {
+            background: #000000;
+            border: 2px solid #000000;
+            border-radius: 4px;
+            padding: 12px 30px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .form-control {
+            border-radius: 4px;
+            border: 2px solid #000000;
+            padding: 12px 15px;
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .form-control:focus {
+            border-color: #000000;
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .alert {
+            border-radius: 4px;
+            border: 2px solid #000000;
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .badge {
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-weight: bold;
+            background: #000000;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        .loading-spinner {
+            display: none;
+        }
+
+        .loading-spinner.show {
+            display: inline-block;
+        }
+
+        .query-type-badge {
+            background: #000000;
+            color: #ffffff;
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border: 1px solid #000000;
+        }
+
+        .formula-tag {
+            background: #ffffff;
+            color: #000000;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid #000000;
+            font-size: 0.8em;
+            margin: 2px;
+            display: inline-block;
+        }
+
+        .results-container {
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: 4px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .code-block {
+            background: #ffffff;
+            color: #000000;
+            padding: 20px;
+            border: 2px solid #000000;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #000000;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* Table pagination styles */
+        .table-pagination {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .pagination-info {
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .pagination-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid #000000;
+            border-radius: 4px;
+            background: #ffffff;
+            color: #000000;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .pagination-btn:disabled:hover {
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .pagination-btn.active {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .rows-per-page {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .rows-per-page select {
+            padding: 4px 8px;
+            border: 1px solid #000000;
+            border-radius: 4px;
+            background: #ffffff;
+        }
+
+        .status-processing { background-color: #666666; }
+        .status-completed { background-color: #000000; }
+        .status-error { background-color: #000000; }
+
+        .history-item {
+            border-left: 4px solid #000000;
+            padding-left: 15px;
+            margin-bottom: 15px;
+        }
+
+        .quality-score {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #000000;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                padding: 20px;
+            }
+        }
+
+
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    AI Data Chat
+                </div>
+                <div class="nav-links">
+                    <a href="/chat">
+                        <i class="fas fa-comments"></i> AI Chat
+                    </a>
+                    <a href="/history">
+                        <i class="fas fa-history"></i> History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

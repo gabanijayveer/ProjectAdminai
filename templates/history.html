@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+
+{% block title %}History - SQL Procedure Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-5 fw-bold" style="color: #000000;">
+                <i class="fas fa-history me-3" style="color: #000000;"></i>
+                Query History
+            </h1>
+            <div>
+                <button class="btn" id="clearHistoryBtn" style="background: #ffffff; color: #000000; border: 2px solid #000000;">
+                    <i class="fas fa-trash me-2"></i>
+                    Clear All History
+                </button>
+                <a href="/" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters and Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="searchQuery" class="form-label">Search Queries:</label>
+                            <input type="text" class="form-control" id="searchQuery" 
+                                   placeholder="Search by query text...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="filterStatus" class="form-label">Filter by Status:</label>
+                            <select class="form-select" id="filterStatus">
+                                <option value="">All Statuses</option>
+                                <option value="completed">Completed</option>
+                                <option value="processing">Processing</option>
+                                <option value="error">Error</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="filterType" class="form-label">Filter by Type:</label>
+                            <select class="form-select" id="filterType">
+                                <option value="">All Types</option>
+                                <option value="hiring">Hiring</option>
+                                <option value="sales">Sales</option>
+                                <option value="statistical">Statistical</option>
+                                <option value="trend">Trend</option>
+                                <option value="interview">Interview</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History Items -->
+<div class="row">
+    <div class="col-12">
+        <div id="historyContainer">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                <p class="mt-3">Loading history...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="History pagination">
+            <ul class="pagination justify-content-center" id="pagination">
+                <!-- Pagination will be generated here -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- History Item Detail Modal -->
+<div class="modal fade" id="historyDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Execution Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="historyDetailContent">
+                <!-- Detail content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="deleteHistoryItemBtn">
+                    <i class="fas fa-trash me-2"></i>
+                    Delete This Item
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this history item? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allHistory = [];
+let filteredHistory = [];
+let currentPage = 1;
+let itemsPerPage = 10;
+let currentDetailItem = null;
+
+// DOM elements
+const historyContainer = document.getElementById('historyContainer');
+const searchQuery = document.getElementById('searchQuery');
+const filterStatus = document.getElementById('filterStatus');
+const filterType = document.getElementById('filterType');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const pagination = document.getElementById('pagination');
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadHistory();
+    
+    // Event listeners
+    searchQuery.addEventListener('input', debounce(filterHistory, 300));
+    filterStatus.addEventListener('change', filterHistory);
+    filterType.addEventListener('change', filterHistory);
+    clearHistoryBtn.addEventListener('click', confirmClearHistory);
+});
+
+async function loadHistory() {
+    try {
+        const response = await fetch('/api/history?limit=1000');
+        allHistory = await response.json();
+        filteredHistory = [...allHistory];
+        displayHistory();
+    } catch (error) {
+        historyContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Failed to load history: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function filterHistory() {
+    const searchTerm = searchQuery.value.toLowerCase();
+    const statusFilter = filterStatus.value;
+    const typeFilter = filterType.value;
+    
+    filteredHistory = allHistory.filter(item => {
+        const matchesSearch = !searchTerm || 
+            item.user_query.toLowerCase().includes(searchTerm);
+        const matchesStatus = !statusFilter || item.status === statusFilter;
+        const matchesType = !typeFilter || item.query_type === typeFilter;
+        
+        return matchesSearch && matchesStatus && matchesType;
+    });
+    
+    currentPage = 1;
+    displayHistory();
+}
+
+function displayHistory() {
+    if (filteredHistory.length === 0) {
+        historyContainer.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-search fa-3x mb-3"></i>
+                <h5>No history items found</h5>
+                <p>Try adjusting your search criteria or execute some queries first.</p>
+            </div>
+        `;
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageItems = filteredHistory.slice(startIndex, endIndex);
+    
+    historyContainer.innerHTML = pageItems.map(item => createHistoryItemHTML(item)).join('');
+    createPagination();
+    
+    // Add event listeners to history items
+    document.querySelectorAll('.history-item-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            showHistoryDetail(itemId);
+        });
+    });
+}
+
+function createHistoryItemHTML(item) {
+    const statusClass = getStatusClass(item.status);
+    const scoreClass = getScoreClass(item.quality_score);
+    const timestamp = new Date(item.timestamp).toLocaleString();
+    
+    return `
+        <div class="card mb-3 history-item-card" data-item-id="${item.id}" style="cursor: pointer;">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="card-title">
+                            ${escapeHtml(item.user_query.substring(0, 100))}${item.user_query.length > 100 ? '...' : ''}
+                        </h6>
+                        <div class="d-flex gap-2 mb-2">
+                            <span class="badge bg-primary">${item.query_type}</span>
+                            <span class="badge ${statusClass}">${item.status}</span>
+                            ${item.quality_score ? `<span class="badge bg-secondary">${item.quality_score}/100</span>` : ''}
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            ${timestamp}
+                        </small>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        ${item.suggested_formulas.length > 0 ? `
+                            <div class="mb-2">
+                                <small class="text-muted">Formulas used:</small><br>
+                                ${item.suggested_formulas.slice(0, 3).map(f => `<span class="badge bg-light text-dark me-1">${f}</span>`).join('')}
+                                ${item.suggested_formulas.length > 3 ? `<span class="text-muted">+${item.suggested_formulas.length - 3} more</span>` : ''}
+                            </div>
+                        ` : ''}
+                        <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); showHistoryDetail('${item.id}')">
+                            <i class="fas fa-eye me-1"></i>
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function createPagination() {
+    const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHTML = '';
+    
+    // Previous button
+    paginationHTML += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+        </li>
+    `;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            paginationHTML += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            paginationHTML += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // Next button
+    paginationHTML += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+        </li>
+    `;
+    
+    pagination.innerHTML = paginationHTML;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        displayHistory();
+        window.scrollTo(0, 0);
+    }
+}
+
+function showHistoryDetail(itemId) {
+    const item = allHistory.find(h => h.id === itemId);
+    if (!item) return;
+    
+    currentDetailItem = item;
+    
+    const detailContent = document.getElementById('historyDetailContent');
+    detailContent.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Query Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Query:</strong></td><td>${escapeHtml(item.user_query)}</td></tr>
+                    <tr><td><strong>Type:</strong></td><td><span class="badge bg-primary">${item.query_type}</span></td></tr>
+                    <tr><td><strong>Status:</strong></td><td><span class="badge ${getStatusClass(item.status)}">${item.status}</span></td></tr>
+                    <tr><td><strong>Timestamp:</strong></td><td>${new Date(item.timestamp).toLocaleString()}</td></tr>
+                    ${item.quality_score ? `<tr><td><strong>Quality Score:</strong></td><td><span class="badge bg-secondary">${item.quality_score}/100</span></td></tr>` : ''}
+                </table>
+                
+                ${item.suggested_formulas.length > 0 ? `
+                    <h6>Suggested Formulas</h6>
+                    <div class="mb-3">
+                        ${item.suggested_formulas.map(f => `<span class="badge bg-light text-dark me-1 mb-1">${f}</span>`).join('')}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="col-md-6">
+                <h6>Generated Procedure</h6>
+                <div class="code-block" style="max-height: 300px; overflow-y: auto;">
+                    <pre><code class="language-sql">${escapeHtml(item.procedure_code || 'No procedure code available')}</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        ${item.execution_results.length > 0 ? `
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6>Execution Results</h6>
+                    <div class="results-container" style="max-height: 200px; overflow-y: auto;">
+                        ${item.execution_results.map(result => `<div class="mb-2">${escapeHtml(result)}</div>`).join('')}
+                    </div>
+                </div>
+            </div>
+        ` : ''}
+    `;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('historyDetailModal'));
+    modal.show();
+    
+    // Re-highlight code
+    if (window.Prism) {
+        Prism.highlightAll();
+    }
+}
+
+async function deleteHistoryItem(itemId) {
+    try {
+        const response = await fetch(`/api/delete_history/${itemId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            // Remove from local arrays
+            allHistory = allHistory.filter(item => item.id !== itemId);
+            filteredHistory = filteredHistory.filter(item => item.id !== itemId);
+            
+            // Refresh display
+            displayHistory();
+            
+            // Hide modals
+            bootstrap.Modal.getInstance(document.getElementById('historyDetailModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+            
+            showToast('History item deleted successfully', 'success');
+        } else {
+            const data = await response.json();
+            showToast('Failed to delete: ' + data.error, 'error');
+        }
+    } catch (error) {
+        showToast('Failed to delete: ' + error.message, 'error');
+    }
+}
+
+function confirmClearHistory() {
+    if (confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
+        clearAllHistory();
+    }
+}
+
+async function clearAllHistory() {
+    try {
+        const response = await fetch('/api/clear_history', {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            allHistory = [];
+            filteredHistory = [];
+            displayHistory();
+            showToast('All history cleared successfully', 'success');
+        } else {
+            const data = await response.json();
+            showToast('Failed to clear history: ' + data.error, 'error');
+        }
+    } catch (error) {
+        showToast('Failed to clear history: ' + error.message, 'error');
+    }
+}
+
+// Event listeners for delete buttons
+document.getElementById('deleteHistoryItemBtn').addEventListener('click', function() {
+    if (currentDetailItem) {
+        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        modal.show();
+    }
+});
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (currentDetailItem) {
+        deleteHistoryItem(currentDetailItem.id);
+    }
+});
+
+// Utility functions
+function getStatusClass(status) {
+    // Return black and white styling for all statuses
+    return 'style="background: #000000; color: #ffffff; border: 1px solid #000000;"';
+}
+
+function getScoreClass(score) {
+    // Return consistent black styling for all scores
+    return 'style="color: #000000; font-weight: bold;"';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function showToast(message, type) {
+    // Simple alert for now - you can implement a proper toast notification
+    alert(message);
+}
+</script>
+{% endblock %}

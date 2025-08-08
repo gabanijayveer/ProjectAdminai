@@ -1,0 +1,23 @@
+# FastAPI and server dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Template and static file serving
+jinja2==3.1.2
+aiofiles==23.2.1
+
+# Database and AI dependencies (keeping existing)
+langchain-google-genai==1.0.8
+langchain==0.2.16
+mysql-connector-python==8.2.0
+python-dotenv==1.0.0
+PyMySQL==1.1.0
+
+# Additional FastAPI utilities
+pydantic==2.5.0
+starlette==0.27.0
+
+# Authentication
+PyJWT==2.8.0
+email-validator==2.1.0
