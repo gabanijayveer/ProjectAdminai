@@ -9,9 +9,10 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, Union
 from dataclasses import dataclass
 from enum import Enum
+from dotenv import load_dotenv
 
-# Set your Google API key
-os.environ["GOOGLE_API_KEY"] = "AIzaSyAatriP47wO05S2e-egmPZjvWGnqyB_izQ"
+# Load environment variables from .env file
+load_dotenv()
 
 # Configuration Classes for Better Structure
 @dataclass
@@ -323,11 +324,11 @@ TABLE_KEYWORDS = {
 }
 
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'password',
-    'database': 'custom',
-    'port': 3312
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', 'password'),
+    'database': os.environ.get('DB_DATABASE', 'custom'),
+    'port': int(os.environ.get('DB_PORT', '3312'))
 }
 
 # Optimization settings for large datasets (5000+ records)
